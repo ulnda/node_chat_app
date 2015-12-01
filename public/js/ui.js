@@ -1,24 +1,25 @@
-function divEscapedContentElement(message) {
+function wrapSimpleContent(message) {
   return $('<div></div>').text(message);
 }
 
-function divSystemContentElement(message) {
+function wrapSystemContent(message) {
   return $('<div></div>').html('<i>' + message + '</i>');
 }
 
-function processUserInput(chatApp, socket) {
+function processUserInput(chat, socket) {
 	var message = $("#send-message").val();
 	var systemMessage;
 
   if (message.charAt(0) == '/') {
-    systemMessage = chatApp.processCommand(message);
+    systemMessage = chat.processCommand(message);
+
     if (systemMessage) {
-      $('#messages').append(divSystemContentElement(systemMessage));
+      $('#messages').append(wrapSystemContent(systemMessage));
     }
   } 
   else {
-    chatApp.sendMessage($('#room').text(), message);
-    $('#messages').append(divEscapedContentElement(message));
+    chat.sendMessage($('#room h2').text().substr(14), message);
+    $('#messages').append(wrapSimpleContent(message));
     $('#messages').scrollTop($('#messages').prop('scrollHeight'));
   }
 
@@ -28,9 +29,9 @@ function processUserInput(chatApp, socket) {
 var socket = io.connect();
 
 $(document).ready(function() {
-  var chatApp = new Chat(socket);
+  var chat = new Chat(socket);
 
-  socket.on('nameResult', function(result) {
+  socket.on('name-result', function(result) {
     var message;
 
     if (result.success) {
@@ -39,31 +40,30 @@ $(document).ready(function() {
     else {
       message = result.message;
     }
-    $('#messages').append(divSystemContentElement(message));
+    $('#messages').append(wrapSystemContent(message));
   });
 
-  socket.on('joinResult', function(result) {
-    $('#room').text(result.room);
-    $('#messages').append(divSystemContentElement('Room changed.'));
+  socket.on('join-result', function(result) {
+    $('#room h2').text("Current room: " + result.room);
+    $('#messages').append(wrapSystemContent('Room changed.'));
   });
 
   socket.on('message', function (message) {
-    var newElement = $('<div></div>').text(message.text);
-    $('#messages').append(newElement);
+    $('#messages').append(wrapSimpleContent(message.text));
   });
 
   socket.on('rooms', function(rooms) {
-    $('#room-list').empty();
+    $('#rooms').empty();
 
     for(var room in rooms) {
       room = room.substring(1, room.length);
       if (room != '') {
-        $('#room-list').append(divEscapedContentElement(room));
+        $('#rooms').append(wrapSimpleContent(room));
       }
     }
 
-    $('#room-list div').click(function() {
-      chatApp.processCommand('/join ' + $(this).text());
+    $('#rooms div').click(function() {
+      chat.processCommand('/join ' + $(this).text());
       $('#send-message').focus();
     });
   });
@@ -75,7 +75,7 @@ $(document).ready(function() {
   $('#send-message').focus();
 
   $('#send-form').submit(function() {
-    processUserInput(chatApp, socket);
+    processUserInput(chat, socket);
     return false;
   });
 });
